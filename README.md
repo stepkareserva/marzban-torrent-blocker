@@ -136,6 +136,11 @@ BlockMode: "iptables"
 For advanced usage, you can configure additional features:
 
 ```yaml
+# If Xray-Core logs are wrapped in JSON, this tag specifies
+# where the original Xray-Core log is stored in the JSON object.
+# An empty string means that the logs are in the standard Xray-Core format.
+JsonEntryTag: ""
+
 # IP addresses to bypass blocking
 BypassIPS:
   - "127.0.0.1"

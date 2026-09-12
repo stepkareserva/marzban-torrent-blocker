@@ -15,6 +15,7 @@ const (
 var (
 	LogFile       string
 	BlockDuration int
+	JsonEntryTag  string
 	TorrentTag    string
 	BlockMode     string
 	BypassIPSet   = make(map[string]struct{})
@@ -37,6 +38,7 @@ var (
 type Config struct {
 	LogFile         string            `yaml:"LogFile"`
 	BlockDuration   int               `yaml:"BlockDuration"`
+	JsonEntryTag    string            `yaml:"JsonEntryTag"`
 	TorrentTag      string            `yaml:"TorrentTag"`
 	UsernameRegex   string            `yaml:"UsernameRegex"`
 	BlockMode       string            `yaml:"BlockMode"`
@@ -64,6 +66,7 @@ func LoadConfig(configPath string) error {
 
 	LogFile = cfg.LogFile
 	BlockDuration = cfg.BlockDuration
+	JsonEntryTag = cfg.JsonEntryTag
 	TorrentTag = cfg.TorrentTag
 	IgnoreEmail = cfg.IgnoreEmail
 	SendWebhook = cfg.SendWebhook
