@@ -10,6 +10,14 @@ BlockDuration: 10
 # Required. Tag that the application uses to determine which log entry to process.
 TorrentTag: "TORRENT"
 
+# Опциональный. Если логи Xray-Core обернуты в JSON, этот тег указывает,
+# где в JSON-объекте находится исходная запись лога Xray-Core.
+# Пустая строка означает стандартный формат логов Xray-Core.
+# Optional. If Xray-Core logs are wrapped in JSON, this tag specifies
+# where the original Xray-Core log is stored in the JSON object. 
+# An empty string means that the logs are in the standard Xray-Core format.
+JsonEntryTag: ""
+
 # Опциональный. Указывает, какой инструмент использовать для блокировки IP-адресов.
 # Допустимые значения: "iptables" или "nft". По умолчанию используется "iptables".
 # Приложение автоматически выберет доступный файрвол, если указанный недоступен.

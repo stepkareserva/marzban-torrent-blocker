@@ -104,3 +104,97 @@ SendWebhook: false
 
 	SendWebhook("testuser", "192.168.1.100", "block")
 }
+
+func TestParseSourceLogEntry(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "config_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	configContent := `
+LogFile: "/var/log/test.log"
+BlockDuration: 10
+TorrentTag: "TORRENT"
+JsonEntryTag: ""
+`
+
+	configFile := filepath.Join(tempDir, "config.yaml")
+	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	err = config.LoadConfig(configFile)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	if config.JsonEntryTag != "" {
+		t.Fatalf("JsonEntryTag is not empty")
+	}
+
+	initializeByteSearchPatterns()
+
+	line := `from 1.2.3.4:54279 accepted tcp:5.6.7.8:24033 [vless-tcp-reality -> TORRENT] email: 9-macbook`
+
+	ip, username, valid := parseLogEntryFast(line)
+	if !valid {
+		t.Fatal("log entry parse. valid == false")
+	}
+	if ip != "1.2.3.4" {
+		t.Fatalf("ip parse. actual: %s required %s", ip, "1.2.3.4")
+	}
+	if username != "9-macbook" {
+		t.Fatalf("username parse. actual: %s required %s", username, "9-macbook")
+	}
+}
+
+func TestParseJsonLogEntry(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "config_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	configContent := `
+LogFile: "/var/log/test.log"
+BlockDuration: 10
+TorrentTag: "TORRENT"
+JsonEntryTag: "msg"
+`
+
+	configFile := filepath.Join(tempDir, "config.yaml")
+	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	err = config.LoadConfig(configFile)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	if config.JsonEntryTag == "" {
+		t.Fatalf("JsonEntryTag is empty")
+	}
+
+	initializeByteSearchPatterns()
+
+	line := `{"level":"info","ts":"2026-09-12 10:58:47 UTC","msg":"[xray] from 1.2.3.4:54279 accepted tcp:5.6.7.8:24033 [vless-tcp-reality -> TORRENT] email: 9-macbook"}`
+
+	entry, valid := extractJsonLogEntry(line)
+	if !valid {
+		t.Fatal("Invalid log entry format: Json entry tag missing")
+	}
+	ip, username, valid := parseLogEntryFast(entry)
+	if !valid {
+		t.Fatal("log entry parse. valid == false")
+	}
+	if ip != "1.2.3.4" {
+		t.Fatalf("ip parse. actual: %s required %s", ip, "1.2.3.4")
+	}
+	if username != "9-macbook" {
+		t.Fatalf("username parse. actual: %s required %s", username, "9-macbook")
+	}
+}

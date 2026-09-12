@@ -34,9 +34,10 @@ var (
 )
 
 var (
-	torrentTagBytes []byte
-	fromBytes       []byte
-	emailBytes      []byte
+	torrentTagBytes   []byte
+	fromBytes         []byte
+	emailBytes        []byte
+	jsonEntryTagBytes []byte
 )
 
 func init() {
@@ -47,6 +48,7 @@ func initializeByteSearchPatterns() {
 	torrentTagBytes = []byte(config.TorrentTag)
 	fromBytes = []byte("from ")
 	emailBytes = []byte("email: ")
+	jsonEntryTagBytes = []byte(fmt.Sprintf(`"%s":`, config.JsonEntryTag))
 
 	log.Printf("Initialized byte search patterns: TorrentTag='%s' (%d bytes)",
 		config.TorrentTag, len(torrentTagBytes))
@@ -79,7 +81,7 @@ func StartLogMonitor() {
 		}
 
 		if hasTorrentTag {
-			handleLogEntry(line)
+			handleLogLine(line)
 		}
 	}
 }
@@ -171,6 +173,38 @@ func monitorJournald(unit string, lines chan string) error {
 	return nil
 }
 
+func extractJsonLogEntry(line string) (entry string, valid bool) {
+	lineBytes := stringToBytes(line)
+
+	entryIndex := indexBytes(lineBytes, jsonEntryTagBytes)
+	if entryIndex == -1 {
+		return "", false
+	}
+
+	entryStart := entryIndex + len(jsonEntryTagBytes)
+	for entryStart < len(lineBytes) && lineBytes[entryStart] != '"' {
+		entryStart++
+	}
+	if entryStart >= len(lineBytes) {
+		return "", false
+	}
+
+	enrtyEnd := entryStart + 1
+	for enrtyEnd < len(lineBytes) && lineBytes[enrtyEnd] != '"' {
+		if lineBytes[enrtyEnd] == '\\' {
+			enrtyEnd += 2
+		} else {
+			enrtyEnd++
+		}
+	}
+	if enrtyEnd > len(lineBytes) {
+		return "", false
+	}
+
+	entry = line[entryStart:enrtyEnd]
+	return entry, true
+}
+
 func parseLogEntryFast(line string) (ip, username string, valid bool) {
 	lineBytes := stringToBytes(line)
 
@@ -240,8 +274,8 @@ func parseLogEntryFast(line string) (ip, username string, valid bool) {
 	return ip, username, true
 }
 
-func handleLogEntry(line string) {
-	ip, usernameStr, valid := parseLogEntryFast(line)
+func handleLogEntry(entry string) {
+	ip, usernameStr, valid := parseLogEntryFast(entry)
 
 	if !valid {
 		log.Println("Invalid log entry format: IP or username missing")
@@ -267,6 +301,23 @@ func handleLogEntry(line string) {
 	if config.SendWebhook {
 		go SendWebhook(usernameStr, ip, "block")
 	}
+}
+
+func handleLogLine(line string) {
+	if config.JsonEntryTag == "" {
+		// line is just an entry from xray-core
+		handleLogEntry(line)
+		return
+	}
+
+	// xray-core entry wrapped onto json log
+	entry, valid := extractJsonLogEntry(line)
+	if !valid {
+		log.Println("Invalid log entry format: Json entry tag missing")
+		return
+	}
+	handleLogEntry(entry)
+	return
 }
 
 func BlockIP(ip string) {
